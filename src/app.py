@@ -147,13 +147,14 @@ with tab1:
                             st.markdown(f"**{product['itemName']}**")
                             st.write(f"💰 **価格:** ¥{product['itemPrice']:,} | ⭐ **レビュー:** {product['reviewAverage']} ({product['reviewCount']:,}件)")
                             
-                            st.info(f"**🤖 Gemini AI 分析レポート:**\n\n{analysis}")
+                            st.markdown("**🤖 ROOM投稿用テキスト（右上のボタンで1クリックコピー）:**")
+                            st.code(analysis, language="text")
                             
                             c1, c2 = st.columns(2)
                             with c1:
-                                st.text_input("🔗 アフィリエイトURL (クリックしてコピー)", value=product['itemUrl'], key=f"url_{keyword}_{rank}")
+                                st.link_button("🛒 楽天商品ページを開く (ここからROOMへ投稿)", product['itemUrl'], use_container_width=True)
                             with c2:
-                                st.link_button("楽天で商品を見る", product['itemUrl'])
+                                st.text_input("🔗 直接のアフィリエイトURL", value=product['itemUrl'], key=f"url_{keyword}_{rank}")
                         st.divider()
             except Exception as e:
                 st.error(f"エラーが発生しました ({keyword}): {e}")
@@ -212,6 +213,11 @@ with tab2:
                 with col2:
                     st.markdown(f"**{row['Product Name']}**")
                     st.write(f"💰 **価格:** ¥{row['Price (Yen)']:,} | 📝 **レビュー:** {row['Review Count']:,}件")
-                    st.info(f"**🤖 AI 分析:**\n\n{row['AI Trend Analysis']}")
-                    st.text_input("🔗 アフィリエイトURL", value=row['Affiliate URL'], key=f"hist_url_{idx}")
+                    st.markdown("**🤖 ROOM投稿用テキスト:**")
+                    st.code(row['AI Trend Analysis'], language="text")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.link_button("🛒 楽天商品ページを開く (ここからROOMへ投稿)", row['Affiliate URL'], use_container_width=True)
+                    with c2:
+                        st.text_input("🔗 アフィリエイトURL", value=row['Affiliate URL'], key=f"hist_url_{idx}")
                 st.divider()
