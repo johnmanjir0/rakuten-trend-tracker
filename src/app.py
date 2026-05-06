@@ -26,6 +26,14 @@ st.markdown("""
 st.title("🛍️ Rakuten Trend Dashboard")
 st.markdown("楽天市場のトレンド商品を自動検索し、AIが「売れる理由」と「ハッシュタグ」を分析します。")
 
+# サイドバー設定
+with st.sidebar:
+    st.header("⚙️ 連携設定")
+    enable_truereview = st.checkbox("TrueReview AIと連携する", value=True)
+    truereview_url = st.text_input("レビューサイトURL", value="https://truereview-ai.vercel.app/beauty")
+    st.info("💡 連携をONにすると、ROOM投稿用テキストの最後にレビューサイトへの案内リンクが自動で追加されます。")
+
+
 # タブの作成
 tab1, tab2 = st.tabs(["🔍 新規リサーチ実行", "📂 過去のレポート履歴"])
 
@@ -120,6 +128,11 @@ with tab1:
                         product['reviewCount'], 
                         product['reviewAverage']
                     )
+                    
+                    # サイト連携
+                    if enable_truereview and truereview_url:
+                        analysis += f"\n\n✨詳細なAI成分・口コミ解析はこちら👇\n{truereview_url}"
+
                     
                     # 保存用データ
                     all_results.append({
