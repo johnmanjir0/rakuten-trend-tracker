@@ -11,23 +11,22 @@ from google.genai import types
 load_dotenv()
 
 # 設定情報
-RAKUTEN_APP_ID = os.getenv("RAKUTEN_APP_ID")
-RAKUTEN_ACCESS_KEY = os.getenv("RAKUTEN_ACCESS_KEY")
-RAKUTEN_AFFILIATE_ID = os.getenv("RAKUTEN_AFFILIATE_ID")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
 SEARCH_API_URL = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260401"
 
 def search_trending_products(keyword: str, hits: int = 10) -> list:
     """楽天APIを利用して、指定キーワードでレビュー数の多い（売れている）商品を取得する"""
     print(f"[Trend Tracker] 楽天で '{keyword}' のトレンド商品を検索中... (レビュー数順)")
     
-    if not RAKUTEN_APP_ID or not RAKUTEN_ACCESS_KEY:
-        raise ValueError("RAKUTEN_APP_ID または RAKUTEN_ACCESS_KEY が設定されていません。")
+    app_id = os.getenv("RAKUTEN_APP_ID")
+    access_key = os.getenv("RAKUTEN_ACCESS_KEY")
+    affiliate_id = os.getenv("RAKUTEN_AFFILIATE_ID")
+    
+    if not app_id or not access_key:
+        raise ValueError("RAKUTEN_APP_ID または RAKUTEN_ACCESS_KEY が設定されていません。StreamlitのSecrets設定を確認してください。")
 
     params = {
-        "applicationId": RAKUTEN_APP_ID,
-        "accessKey": RAKUTEN_ACCESS_KEY,
+        "applicationId": app_id,
+        "accessKey": access_key,
         "keyword": keyword,
         "format": "json",
         "hits": hits,
@@ -53,8 +52,9 @@ def search_trending_products(keyword: str, hits: int = 10) -> list:
         
         # アフィリエイトURLの生成（IDがある場合）
         item_url = i.get('itemUrl')
-        if RAKUTEN_AFFILIATE_ID:
-            item_url = f"https://hb.afl.rakuten.co.jp/hgc/{RAKUTEN_AFFILIATE_ID}/?pc={item_url}"
+        affiliate_id = os.getenv("RAKUTEN_AFFILIATE_ID")
+        if affiliate_id:
+            item_url = f"https://hb.afl.rakuten.co.jp/hgc/{affiliate_id}/?pc={item_url}"
             
         products.append({
             "itemName": i.get('itemName'),
@@ -68,11 +68,12 @@ def search_trending_products(keyword: str, hits: int = 10) -> list:
 
 def discover_trends_with_ai(category: str) -> list:
     """GeminiとGoogle検索機能を利用して、カテゴリに応じたリアルタイムのトレンドキーワードを3つ抽出する"""
-    if not GEMINI_API_KEY:
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
         print("[AI Error] GEMINI_API_KEYが設定されていません。")
         return []
         
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    client = genai.Client(api_key=gemini_key)
     
     # カテゴリに応じたプロンプトの設定
     if category == "seasonal":
@@ -109,10 +110,11 @@ def discover_trends_with_ai(category: str) -> list:
 
 def analyze_trend_with_ai(product_name: str, price: int, review_count: int, review_avg: float) -> str:
     """Geminiを使って商品がなぜ売れているのかを分析・解説する"""
-    if not GEMINI_API_KEY:
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
         return "AI分析スキップ（APIキー未設定）"
         
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    client = genai.Client(api_key=gemini_key)
     
     prompt = f"""
 あなたは凄腕のEコマースマーケターであり、アフィリエイターです。
