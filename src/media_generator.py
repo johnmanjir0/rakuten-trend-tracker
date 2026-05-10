@@ -83,7 +83,10 @@ def create_premium_banner(product_data: Dict, platform: str = "x", info: Dict = 
     font_bold = get_japanese_font(70)
     
     # キャッチコピー（視認性を上げるために帯をつける）
-    hook = info.get("hook", "Featured Item") if info else "Recommended"
+    # infoが辞書であることを保証
+    if not isinstance(info, dict):
+        info = {}
+    hook = info.get("hook", "Featured Item")
     h_bbox = draw.textbbox((0, 0), hook.upper(), font=font_main)
     h_w = h_bbox[2]-h_bbox[0]
     draw.rectangle(((size[0]-h_w)//2 - 20, size[1]-200, (size[0]+h_w)//2 + 20, size[1]-150), fill=(0,0,0,180))
