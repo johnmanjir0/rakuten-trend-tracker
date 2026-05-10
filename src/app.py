@@ -300,9 +300,15 @@ with tab3:
                             "imageUrl": product["Image URL"]
                         }
                         info = st.session_state.get(f"video_info_{selected_product_idx}", {})
-                        vid_path = create_short_video(st.session_state.get(f"x_img_{selected_product_idx}"), product_data_vid, info)
-                        if vid_path:
-                            st.session_state[f"x_vid_{selected_product_idx}"] = vid_path
+                        try:
+                            vid_path = create_short_video(st.session_state.get(f"x_img_{selected_product_idx}"), product_data_vid, info)
+                            if vid_path and os.path.exists(vid_path):
+                                st.session_state[f"x_vid_{selected_product_idx}"] = vid_path
+                                st.rerun()
+                            else:
+                                st.error("動画ファイルの作成に失敗しました。")
+                        except Exception as e:
+                            st.error(f"動画生成中にエラーが発生しました: {e}")
                 
                 if f"x_vid_{selected_product_idx}" in st.session_state:
                     st.video(st.session_state[f"x_vid_{selected_product_idx}"])
@@ -352,9 +358,15 @@ with tab3:
                             "imageUrl": product["Image URL"]
                         }
                         info = st.session_state.get(f"video_info_insta_{selected_product_idx}", {})
-                        vid_path = create_short_video(st.session_state.get(f"insta_img_{selected_product_idx}"), product_data_vid, info)
-                        if vid_path:
-                            st.session_state[f"insta_vid_{selected_product_idx}"] = vid_path
+                        try:
+                            vid_path = create_short_video(st.session_state.get(f"insta_img_{selected_product_idx}"), product_data_vid, info)
+                            if vid_path and os.path.exists(vid_path):
+                                st.session_state[f"insta_vid_{selected_product_idx}"] = vid_path
+                                st.rerun()
+                            else:
+                                st.error("動画ファイルの作成に失敗しました。")
+                        except Exception as e:
+                            st.error(f"動画生成中にエラーが発生しました: {e}")
                 
                 if f"insta_vid_{selected_product_idx}" in st.session_state:
                     st.video(st.session_state[f"insta_vid_{selected_product_idx}"])
