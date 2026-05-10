@@ -62,31 +62,39 @@ def create_premium_banner(product_data: Dict, platform: str = "x", info: Dict = 
         draw.ellipse([(size[0]//2 - r, size[1] - r), (size[0]//2 + r, size[1] + r)], 
                      fill=(0, 0, 0, alpha))
 
-    # 2. 商品の見やすさを最大化（画面いっぱいに表示）
-    max_h = int(size[1] * 0.85) # 65%から85%に拡大
-    product_img.thumbnail((size[0] * 0.9, max_h), Image.Resampling.LANCZOS)
+    # 2. 商品の見やすさを最大化（全画面表示）
+    # アスペクト比を維持して、キャンバスの幅か高さの大きい方に合わせる
     p_w, p_h = product_img.size
+    ratio = max(size[0] / p_w, size[1] / p_h)
+    new_w, new_h = int(p_w * ratio), int(p_h * ratio)
+    product_img = product_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
     
-    # 柔らかなドロップシャドウ（商品の存在感を出す）
-    shadow = Image.new("RGBA", (p_w + 50, p_h + 50), (0,0,0,0))
-    ImageDraw.Draw(shadow).ellipse([15, 15, p_w+35, p_h+35], fill=(0,0,0,35))
-    shadow = shadow.filter(ImageFilter.GaussianBlur(radius=20))
-    
-    pos_x, pos_y = (size[0]-p_w)//2, (size[1]-p_h)//2 - 20 # 配置を中央寄りに調整
-    bg.paste(shadow, (pos_x-10, pos_y+10), shadow)
-    bg.paste(product_img, (pos_x, pos_y), product_img if product_img.mode == 'RGBA' else None)
+    # 中央を切り抜き（または配置）
+    left = (new_w - size[0]) // 2
+    top = (new_h - size[1]) // 2
+    bg.paste(product_img, (-left, -top))
 
-    # 3. シンプルかつ洗練されたタイポグラフィ
-    font_main = get_japanese_font(35)
-    font_bold = get_japanese_font(60)
+    # 暗めのオーバーレイを薄くかけて、文字を見やすくする
+    overlay = Image.new("RGBA", size, (0, 0, 0, 60))
+    bg.paste(overlay, (0, 0), overlay)
+
+    # 3. シンプルかつ洗練されたタイポグラフィ（視認性重視）
+    font_main = get_japanese_font(40)
+    font_bold = get_japanese_font(70)
     
-    # キャッチコピー（もしあれば）
-    hook = info.get("hook", "Special Pick") if info else "Recommended"
-    draw.text((size[0]//2, size[1]-150), hook.upper(), font=font_main, fill=(100, 100, 100), anchor="mm")
+    # キャッチコピー（視認性を上げるために帯をつける）
+    hook = info.get("hook", "Featured Item") if info else "Recommended"
+    h_bbox = draw.textbbox((0, 0), hook.upper(), font=font_main)
+    h_w = h_bbox[2]-h_bbox[0]
+    draw.rectangle(((size[0]-h_w)//2 - 20, size[1]-200, (size[0]+h_w)//2 + 20, size[1]-150), fill=(0,0,0,180))
+    draw.text((size[0]//2, size[1]-175), hook.upper(), font=font_main, fill="white", anchor="mm")
     
     # 価格
     price = f"¥{product_data.get('itemPrice', 0):,}"
-    draw.text((size[0]//2, size[1]-80), price, font=font_bold, fill=(191, 0, 0), anchor="mm")
+    p_bbox = draw.textbbox((0,0), price, font=font_bold)
+    p_w = p_bbox[2]-p_bbox[0]
+    draw.rectangle(((size[0]-p_w)//2 - 30, size[1]-130, (size[0]+p_w)//2 + 30, size[1]-50), fill=(191, 0, 0))
+    draw.text((size[0]//2, size[1]-90), price, font=font_bold, fill="white", anchor="mm")
 
     # 保存
     os.makedirs("output/media", exist_ok=True)
@@ -122,21 +130,22 @@ def create_short_video(image_path: str, product_data: Dict, info: Dict) -> str:
 
         bg_clip = bg_clip.transform(zoom_effect)
 
-        # テロップ生成関数
-        def create_telop(text, start, duration, y_pos, color="white", bg_color=(191, 0, 0)):
-            t_font = get_japanese_font(40)
-            img = Image.new("RGBA", (800, 80), (0,0,0,0))
+        # テロップ生成関数（サイズと配置を改善）
+        def create_telop(text, start, duration, y_pos, bg_color=(191, 0, 0)):
+            t_font = get_japanese_font(50) # フォントサイズアップ
+            img = Image.new("RGBA", (1000, 120), (0,0,0,0))
             d = ImageDraw.Draw(img)
             bbox = d.textbbox((0,0), text, font=t_font)
             tw = bbox[2]-bbox[0]
-            d.rounded_rectangle(((800-tw)//2 - 20, 10, (800+tw)//2 + 20, 70), radius=10, fill=bg_color)
-            d.text((400, 40), text, font=t_font, fill=color, anchor="mm")
+            # 強力な縁取り
+            d.rounded_rectangle(((1000-tw)//2 - 30, 10, (1000+tw)//2 + 30, 110), radius=15, fill=bg_color)
+            d.text((500, 60), text, font=t_font, fill="white", anchor="mm", stroke_width=2, stroke_fill="black")
             return ImageClip(np.array(img), duration=duration).with_start(start).with_position(("center", y_pos))
 
-        # AIが生成した情報を差し込む
-        t1 = create_telop(info.get("hook", "今、売れてます！"), 0.5, 2.0, 100)
-        t2 = create_telop(info.get("benefit1", "圧倒的な満足度"), 2.0, 2.0, 200)
-        t3 = create_telop(info.get("benefit2", "生活が変わる逸品"), 3.5, 2.5, 300)
+        # 情報を大きく表示
+        t1 = create_telop(info.get("hook", "今、売れてます！"), 0.2, 2.0, 150)
+        t2 = create_telop(info.get("benefit1", "圧倒的な満足度"), 2.2, 2.0, 300)
+        t3 = create_telop(info.get("benefit2", "生活が変わる逸品"), 4.2, 1.8, 450)
 
         final_clip = CompositeVideoClip([bg_clip, t1, t2, t3])
         final_clip.write_videofile(output_path, fps=30, codec="libx264", audio=False, logger=None, preset="medium")
