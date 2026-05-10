@@ -117,6 +117,45 @@ def generate_sns_content(product_data: Dict, platform: str) -> str:
     except Exception as e:
         print(f"[AI Generator] AI生成エラーが発生しました: {e}")
         return f"おすすめの商品です！\n{title}"
+def generate_video_scripts(product_data: Dict) -> Dict:
+    """
+    動画内に表示するための「強力なキャッチコピー」と「ベネフィット」を
+    GeminiのSearch Grounding（ウェブ検索）を使用して生成します。
+    """
+    if not GEMINI_API_KEY: return {"hook": "大注目アイテム", "benefits": ["高評価獲得中", "期間限定"]}
+    
+    title = product_data.get("itemName", product_data.get("title", ""))
+    
+    prompt = f"""
+あなたはSNS広告の天才コピーライターです。
+以下の商品の「今売れている理由」を最新のトレンドや口コミから調査し、動画の視聴者が1秒で惹きつけられる情報を抽出してください。
+
+【対象商品】
+{title}
+
+【出力内容（JSON形式）】
+1. hook: 動画の冒頭に表示する、ユーザーの心を掴む15文字以内のキャッチコピー
+2. benefit1: この商品の最大のメリット（20文字以内）
+3. benefit2: 生活がどう変わるか（20文字以内）
+4. recommendation: どんな人におすすめか（15文字以内）
+
+最新のウェブ情報を反映させて、具体的かつ強力な言葉で出力してください。
+"""
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        response = client.models.generate_content(
+            model="gemini-3.1-flash-lite",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                tools=[{"google_search": {}}],
+                response_mime_type="application/json"
+            )
+        )
+        import json
+        return json.loads(response.text)
+    except Exception as e:
+        print(f"[AI Generator] 動画用スクリプト生成エラー: {e}")
+        return {"hook": "SNSで話題沸騰", "benefit1": "圧倒的人気アイテム", "benefit2": "コスパ最強で満足度◎", "recommendation": "迷ったらこれ！"}
 
 if __name__ == "__main__":
     # テスト実行用

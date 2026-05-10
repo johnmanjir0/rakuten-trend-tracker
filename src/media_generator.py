@@ -39,140 +39,110 @@ def get_japanese_font(size: int):
     print("[Media Generator] 日本語フォントが見つかりません。デフォルトフォントを使用します。")
     return ImageFont.load_default()
 
-def create_premium_banner(product_data: Dict, platform: str = "x") -> str:
+def create_premium_banner(product_data: Dict, platform: str = "x", info: Dict = None) -> str:
     """
-    超高品質なSNS用バナー画像を生成します。
+    スタジオ撮影のような高品質でシンプルなバナーを生成。
+    商品の見やすさを最優先する。
     """
-    # サイズ設定
-    if platform.lower() == "x":
-        size = (1200, 675)
-    elif platform.lower() == "instagram":
-        size = (1080, 1080)
-    else:
-        size = (1080, 1350)
+    if platform.lower() == "x": size = (1200, 675)
+    else: size = (1080, 1080)
 
-    # 商品画像のダウンロード
     image_url = product_data.get("imageUrl")
     if not image_url: return ""
-    
-    try:
-        product_img = download_image(image_url)
+    try: product_img = download_image(image_url)
     except: return ""
 
-    # 1. 洗練されたグラデーション背景の作成
-    bg = Image.new("RGBA", size, (20, 20, 30, 255))
+    # 1. シンプルでモダンなスタジオ背景（白または淡いグレーのグラデーション）
+    bg = Image.new("RGBA", size, (250, 250, 250, 255))
     draw = ImageDraw.Draw(bg)
     
-    # 放射状グラデーション（ライティング効果）
-    for r in range(max(size), 0, -10):
-        alpha = int(150 * (1 - r / max(size)))
-        draw.ellipse([(size[0]//2 - r, size[1]//2 - r), (size[0]//2 + r, size[1]//2 + r)], 
-                     fill=(80, 50, 120, alpha))
+    # 柔らかなライティング
+    for r in range(size[0], 0, -20):
+        alpha = int(20 * (1 - r / size[0]))
+        draw.ellipse([(size[0]//2 - r, size[1] - r), (size[0]//2 + r, size[1] + r)], 
+                     fill=(0, 0, 0, alpha))
 
-    # 2. メイン商品の加工（ドロップシャドウ + 柔らかな角丸）
-    max_prod_h = int(size[1] * 0.6)
-    prod_w = int(product_img.width * (max_prod_h / product_img.height))
-    product_img = product_img.resize((prod_w, max_prod_h), Image.Resampling.LANCZOS)
+    # 2. 商品の見やすさを最大化
+    max_h = int(size[1] * 0.65)
+    product_img.thumbnail((size[0], max_h), Image.Resampling.LANCZOS)
+    p_w, p_h = product_img.size
     
-    # シャドウ用キャンバス
-    shadow_offset = 20
-    shadow = Image.new("RGBA", (prod_w + 60, max_prod_h + 60), (0,0,0,0))
-    s_draw = ImageDraw.Draw(shadow)
-    s_draw.rounded_rectangle((20, 20, prod_w+20, max_prod_h+20), radius=40, fill=(0,0,0,120))
+    # 柔らかなドロップシャドウ（商品の存在感を出す）
+    shadow = Image.new("RGBA", (p_w + 40, p_h + 40), (0,0,0,0))
+    ImageDraw.Draw(shadow).ellipse([10, 10, p_w+30, p_h+30], fill=(0,0,0,40))
     shadow = shadow.filter(ImageFilter.GaussianBlur(radius=15))
     
-    # 中央に配置
-    pos_x = (size[0] - prod_w) // 2
-    pos_y = (size[1] - max_prod_h) // 2 - 40
-    bg.paste(shadow, (pos_x - 10, pos_y - 10), shadow)
+    pos_x, pos_y = (size[0]-p_w)//2, (size[1]-p_h)//2 - 50
+    bg.paste(shadow, (pos_x-10, pos_y+10), shadow)
+    bg.paste(product_img, (pos_x, pos_y), product_img if product_img.mode == 'RGBA' else None)
+
+    # 3. シンプルかつ洗練されたタイポグラフィ
+    font_main = get_japanese_font(35)
+    font_bold = get_japanese_font(60)
     
-    # 商品本体
-    mask = Image.new("L", (prod_w, max_prod_h), 0)
-    ImageDraw.Draw(mask).rounded_rectangle((0, 0, prod_w, max_prod_h), radius=40, fill=255)
-    bg.paste(product_img, (pos_x, pos_y), mask)
-
-    # 3. 高級感のあるテキストデザイン
-    draw = ImageDraw.Draw(bg)
-    font_title = get_japanese_font(45)
-    font_price = get_japanese_font(80)
-    font_tag = get_japanese_font(25)
-
-    title = product_data.get("itemName", "RECOMMENDED")
-    if len(title) > 25: title = title[:23] + "..."
+    # キャッチコピー（もしあれば）
+    hook = info.get("hook", "Special Pick") if info else "Recommended"
+    draw.text((size[0]//2, size[1]-150), hook.upper(), font=font_main, fill=(100, 100, 100), anchor="mm")
+    
+    # 価格
     price = f"¥{product_data.get('itemPrice', 0):,}"
-
-    # タイトル（中央揃え）
-    t_bbox = draw.textbbox((0, 0), title, font=font_title)
-    draw.text(((size[0] - (t_bbox[2]-t_bbox[0]))//2, size[1] - 180), title, font=font_title, fill="white")
-
-    # 価格（ダイナミックな表示）
-    p_bbox = draw.textbbox((0, 0), price, font=font_price)
-    p_w, p_h = p_bbox[2]-p_bbox[0], p_bbox[3]-p_bbox[1]
-    draw.text(((size[0]-p_w)//2, size[1]-110), price, font=font_price, fill=(255, 230, 100)) # 金色に近い黄色
-
-    # 4. 装飾（アクセントライン）
-    line_y = size[1] - 125
-    draw.line([(size[0]//2 - 150, line_y), (size[0]//2 + 150, line_y)], fill=(255,255,255,100), width=2)
-
-    # トレンドバッジ
-    draw.rounded_rectangle((30, 30, 200, 70), radius=10, fill=(255, 200, 0))
-    draw.text((50, 35), "★ TREND", font=font_tag, fill="black")
+    draw.text((size[0]//2, size[1]-80), price, font=font_bold, fill=(191, 0, 0), anchor="mm")
 
     # 保存
     os.makedirs("output/media", exist_ok=True)
     filename = f"output/media/post_{platform}_{product_data.get('itemCode', 'temp')}.png"
-    bg.convert("RGB").save(filename, quality=95)
+    bg.convert("RGB").save(filename, quality=100)
     return filename
 
-def create_short_video(image_path: str, output_path: str = None) -> str:
-    """ズームアニメーション付きの高品質な動画を生成する"""
+def create_short_video(image_path: str, product_data: Dict, info: Dict) -> str:
+    """
+    商品のベネフィット情報をテロップとして差し込む、プロ仕様のショート動画広告を生成。
+    """
     if not image_path or not os.path.exists(image_path): return ""
-    if not output_path: output_path = image_path.replace(".png", ".mp4")
+    output_path = image_path.replace(".png", ".mp4")
     
-    print(f"[Media Generator] 動画生成プロセス開始: {output_path}")
+    from moviepy import CompositeVideoClip
+    import numpy as np
+
+    print(f"[Media Generator] プロ品質動画を生成中: {output_path}")
     try:
-        # 1. 静止画を読み込み
-        clip = ImageClip(image_path, duration=5)
+        # 背景（ズームする商品画像）
+        bg_clip = ImageClip(image_path, duration=6)
         
-        # 2. ズームアニメーション（ケンバーンズ効果）の適用
-        # MoviePy 2.x 以降の正しい書き方
-        try:
-            # 時間(t)に応じて解像度を1.0倍から1.1倍に拡大する関数
-            def zoom_effect(get_frame, t):
-                frame = get_frame(t)
-                zoom_factor = 1 + (0.1 * (t / 5)) # 5秒間で1.1倍
-                
-                # PILを使ってフレームをリサイズ
-                img = Image.fromarray(frame)
-                w, h = img.size
-                new_w, new_h = int(w * zoom_factor), int(h * zoom_factor)
-                
-                # 拡大して中央を切り抜く
-                img_zoomed = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-                left = (new_w - w) // 2
-                top = (new_h - h) // 2
-                img_final = img_zoomed.crop((left, top, left + w, top + h))
-                
-                return np.array(img_final)
+        # ズーム効果
+        def zoom_effect(get_frame, t):
+            frame = get_frame(t)
+            zoom = 1 + (0.1 * t / 6)
+            img = Image.fromarray(frame)
+            w, h = img.size
+            new_w, new_h = int(w * zoom), int(h * zoom)
+            img_zoomed = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+            left, top = (new_w - w) // 2, (new_h - h) // 2
+            return np.array(img_zoomed.crop((left, top, left + w, top + h)))
 
-            import numpy as np
-            clip = clip.transform(zoom_effect)
-        except Exception as ze:
-            print(f"[Media Generator] ズーム効果の適用に失敗しました: {ze}")
-            # エフェクトなしで続行
+        bg_clip = bg_clip.transform(zoom_effect)
 
-        # 3. ファイル書き出し
-        clip.write_videofile(
-            output_path, 
-            fps=24, 
-            codec="libx264", 
-            audio=False, 
-            logger=None,
-            preset="medium"
-        )
+        # テロップ生成関数
+        def create_telop(text, start, duration, y_pos, color="white", bg_color=(191, 0, 0)):
+            t_font = get_japanese_font(40)
+            img = Image.new("RGBA", (800, 80), (0,0,0,0))
+            d = ImageDraw.Draw(img)
+            bbox = d.textbbox((0,0), text, font=t_font)
+            tw = bbox[2]-bbox[0]
+            d.rounded_rectangle(((800-tw)//2 - 20, 10, (800+tw)//2 + 20, 70), radius=10, fill=bg_color)
+            d.text((400, 40), text, font=t_font, fill=color, anchor="mm")
+            return ImageClip(np.array(img), duration=duration).with_start(start).with_position(("center", y_pos))
+
+        # AIが生成した情報を差し込む
+        t1 = create_telop(info.get("hook", "今、売れてます！"), 0.5, 2.0, 100)
+        t2 = create_telop(info.get("benefit1", "圧倒的な満足度"), 2.0, 2.0, 200)
+        t3 = create_telop(info.get("benefit2", "生活が変わる逸品"), 3.5, 2.5, 300)
+
+        final_clip = CompositeVideoClip([bg_clip, t1, t2, t3])
+        final_clip.write_videofile(output_path, fps=30, codec="libx264", audio=False, logger=None, preset="medium")
         return output_path
     except Exception as e:
-        print(f"[Media Generator] 動画生成中に致命的なエラーが発生しました: {e}")
+        print(f"[Media Generator] 動画生成エラー: {e}")
         return ""
 
 if __name__ == "__main__":
