@@ -1,14 +1,12 @@
 import os
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from typing import Dict
 from dotenv import load_dotenv
 
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
 
 # 推奨モデル (高速かつ安価なflashモデル、またはproモデル)
 MODEL_NAME = "3.1-flash-lite"
