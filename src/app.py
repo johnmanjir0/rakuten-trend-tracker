@@ -291,8 +291,16 @@ with tab3:
                 
                 if st.button("🎬 X用のプロ品質動画を生成", key=f"x_vid_btn_{selected_product_idx}"):
                     with st.spinner("AIテロップ付き動画を生成中..."):
+                        # 商品データを再定義（NameError回避）
+                        product_data_vid = {
+                            "title": product["Product Name"],
+                            "price": product["Price (Yen)"],
+                            "itemName": product["Product Name"],
+                            "itemPrice": product["Price (Yen)"],
+                            "imageUrl": product["Image URL"]
+                        }
                         info = st.session_state.get(f"video_info_{selected_product_idx}", {})
-                        vid_path = create_short_video(st.session_state.get(f"x_img_{selected_product_idx}"), product_data, info)
+                        vid_path = create_short_video(st.session_state.get(f"x_img_{selected_product_idx}"), product_data_vid, info)
                         if vid_path:
                             st.session_state[f"x_vid_{selected_product_idx}"] = vid_path
                 
@@ -335,8 +343,16 @@ with tab3:
 
                 if st.button("🎬 Insta用のプロ品質動画を生成", key=f"insta_vid_btn_{selected_product_idx}"):
                     with st.spinner("AIテロップ付き動画を生成中..."):
+                        # 商品データを再定義
+                        product_data_vid = {
+                            "title": product["Product Name"],
+                            "price": product["Price (Yen)"],
+                            "itemName": product["Product Name"],
+                            "itemPrice": product["Price (Yen)"],
+                            "imageUrl": product["Image URL"]
+                        }
                         info = st.session_state.get(f"video_info_insta_{selected_product_idx}", {})
-                        vid_path = create_short_video(st.session_state.get(f"insta_img_{selected_product_idx}"), product_data, info)
+                        vid_path = create_short_video(st.session_state.get(f"insta_img_{selected_product_idx}"), product_data_vid, info)
                         if vid_path:
                             st.session_state[f"insta_vid_{selected_product_idx}"] = vid_path
                 

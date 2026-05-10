@@ -62,17 +62,17 @@ def create_premium_banner(product_data: Dict, platform: str = "x", info: Dict = 
         draw.ellipse([(size[0]//2 - r, size[1] - r), (size[0]//2 + r, size[1] + r)], 
                      fill=(0, 0, 0, alpha))
 
-    # 2. 商品の見やすさを最大化
-    max_h = int(size[1] * 0.65)
-    product_img.thumbnail((size[0], max_h), Image.Resampling.LANCZOS)
+    # 2. 商品の見やすさを最大化（画面いっぱいに表示）
+    max_h = int(size[1] * 0.85) # 65%から85%に拡大
+    product_img.thumbnail((size[0] * 0.9, max_h), Image.Resampling.LANCZOS)
     p_w, p_h = product_img.size
     
     # 柔らかなドロップシャドウ（商品の存在感を出す）
-    shadow = Image.new("RGBA", (p_w + 40, p_h + 40), (0,0,0,0))
-    ImageDraw.Draw(shadow).ellipse([10, 10, p_w+30, p_h+30], fill=(0,0,0,40))
-    shadow = shadow.filter(ImageFilter.GaussianBlur(radius=15))
+    shadow = Image.new("RGBA", (p_w + 50, p_h + 50), (0,0,0,0))
+    ImageDraw.Draw(shadow).ellipse([15, 15, p_w+35, p_h+35], fill=(0,0,0,35))
+    shadow = shadow.filter(ImageFilter.GaussianBlur(radius=20))
     
-    pos_x, pos_y = (size[0]-p_w)//2, (size[1]-p_h)//2 - 50
+    pos_x, pos_y = (size[0]-p_w)//2, (size[1]-p_h)//2 - 20 # 配置を中央寄りに調整
     bg.paste(shadow, (pos_x-10, pos_y+10), shadow)
     bg.paste(product_img, (pos_x, pos_y), product_img if product_img.mode == 'RGBA' else None)
 
