@@ -3,6 +3,8 @@ import pandas as pd
 import os
 import glob
 from trend_tracker import search_trending_products, analyze_trend_with_ai, discover_trends_with_ai
+from ai_generator import generate_sns_content
+from media_generator import create_premium_banner, create_short_video
 
 # 設定
 st.set_page_config(page_title="Rakuten Trend Tracker", page_icon="🛍️", layout="wide")
@@ -35,7 +37,7 @@ with st.sidebar:
 
 
 # タブの作成
-tab1, tab2 = st.tabs(["🔍 新規リサーチ実行", "📂 過去のレポート履歴"])
+tab1, tab2, tab3 = st.tabs(["🔍 新規リサーチ実行", "📂 過去のレポート履歴", "📱 SNSオートメーション"])
 
 with tab1:
     st.header("新しいトレンドを検索")
@@ -234,3 +236,99 @@ with tab2:
                     with c2:
                         st.text_input("🔗 アフィリエイトURL", value=row['Affiliate URL'], key=f"hist_url_{idx}")
                 st.divider()
+with tab3:
+    st.header("📱 SNS投稿用コンテンツ生成")
+    st.markdown("トレンド商品をもとに、XやInstagramにそのまま投稿できる画像と文章を自動作成します。")
+    
+    report_files = sorted(glob.glob("reports/*.csv"), reverse=True)
+    if not report_files:
+        st.info("まずはリサーチを実行してレポートを作成してください。")
+    else:
+        selected_report_sns = st.selectbox("リサーチ結果を選択", report_files, key="sns_report_select")
+        df_sns = pd.read_csv(selected_report_sns)
+        
+        selected_product_idx = st.selectbox(
+            "対象の商品を選択してください", 
+            range(len(df_sns)), 
+            format_func=lambda x: f"{df_sns.iloc[x]['Product Name'][:50]}..."
+        )
+        
+        product = df_sns.iloc[selected_product_idx]
+        
+        col_gen1, col_gen2 = st.columns(2)
+        
+        with col_gen1:
+            st.subheader("🐦 X (Twitter) 用")
+            if st.button("X用の投稿を生成", use_container_width=True):
+                with st.spinner("生成中..."):
+                    product_data = {
+                        "title": product["Product Name"],
+                        "price": product["Price (Yen)"],
+                        "description": product["AI Trend Analysis"], # 簡易的に分析結果を使用
+                        "itemName": product["Product Name"],
+                        "itemPrice": product["Price (Yen)"],
+                        "imageUrl": product["Image URL"],
+                        "itemCode": f"x_{selected_product_idx}"
+                    }
+                    # テキスト生成
+                    x_text = generate_sns_content(product_data, "x")
+                    st.session_state[f"x_text_{selected_product_idx}"] = x_text
+                    # 画像生成
+                    x_img_path = create_premium_banner(product_data, "x")
+                    st.session_state[f"x_img_{selected_product_idx}"] = x_img_path
+
+            if f"x_text_{selected_product_idx}" in st.session_state:
+                st.code(st.session_state[f"x_text_{selected_product_idx}"], language="text")
+                if f"x_img_{selected_product_idx}" in st.session_state:
+                    st.image(st.session_state[f"x_img_{selected_product_idx}"], use_container_width=True)
+                    with open(st.session_state[f"x_img_{selected_product_idx}"], "rb") as f:
+                        st.download_button("📥 画像をダウンロード", f, file_name="x_post.png", mime="image/png", key=f"x_dl_img_{selected_product_idx}")
+                
+                if st.button("🎬 X用の動画(5秒)を生成", key=f"x_vid_btn_{selected_product_idx}"):
+                    with st.spinner("動画生成中... (数秒かかります)"):
+                        vid_path = create_short_video(st.session_state.get(f"x_img_{selected_product_idx}"))
+                        if vid_path:
+                            st.session_state[f"x_vid_{selected_product_idx}"] = vid_path
+                
+                if f"x_vid_{selected_product_idx}" in st.session_state:
+                    st.video(st.session_state[f"x_vid_{selected_product_idx}"])
+                    with open(st.session_state[f"x_vid_{selected_product_idx}"], "rb") as f:
+                        st.download_button("📥 動画をダウンロード", f, file_name="x_post.mp4", mime="video/mp4", key=f"x_dl_vid_{selected_product_idx}")
+
+        with col_gen2:
+            st.subheader("📸 Instagram用")
+            if st.button("Instagram用の投稿を生成", use_container_width=True):
+                with st.spinner("生成中..."):
+                    product_data = {
+                        "title": product["Product Name"],
+                        "price": product["Price (Yen)"],
+                        "description": product["AI Trend Analysis"],
+                        "itemName": product["Product Name"],
+                        "itemPrice": product["Price (Yen)"],
+                        "imageUrl": product["Image URL"],
+                        "itemCode": f"insta_{selected_product_idx}"
+                    }
+                    # テキスト生成
+                    insta_text = generate_sns_content(product_data, "instagram")
+                    st.session_state[f"insta_text_{selected_product_idx}"] = insta_text
+                    # 画像生成
+                    insta_img_path = create_premium_banner(product_data, "instagram")
+                    st.session_state[f"insta_img_{selected_product_idx}"] = insta_img_path
+
+            if f"insta_text_{selected_product_idx}" in st.session_state:
+                st.code(st.session_state[f"insta_text_{selected_product_idx}"], language="text")
+                if f"insta_img_{selected_product_idx}" in st.session_state:
+                    st.image(st.session_state[f"insta_img_{selected_product_idx}"], use_container_width=True)
+                    with open(st.session_state[f"insta_img_{selected_product_idx}"], "rb") as f:
+                        st.download_button("📥 画像をダウンロード", f, file_name="insta_post.png", mime="image/png", key=f"insta_dl_img_{selected_product_idx}")
+
+                if st.button("🎬 Insta用の動画(5秒)を生成", key=f"insta_vid_btn_{selected_product_idx}"):
+                    with st.spinner("動画生成中..."):
+                        vid_path = create_short_video(st.session_state.get(f"insta_img_{selected_product_idx}"))
+                        if vid_path:
+                            st.session_state[f"insta_vid_{selected_product_idx}"] = vid_path
+                
+                if f"insta_vid_{selected_product_idx}" in st.session_state:
+                    st.video(st.session_state[f"insta_vid_{selected_product_idx}"])
+                    with open(st.session_state[f"insta_vid_{selected_product_idx}"], "rb") as f:
+                        st.download_button("📥 動画をダウンロード", f, file_name="insta_post.mp4", mime="video/mp4", key=f"insta_dl_vid_{selected_product_idx}")

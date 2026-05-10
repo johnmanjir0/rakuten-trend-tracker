@@ -11,7 +11,7 @@ if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
 # 推奨モデル (高速かつ安価なflashモデル、またはproモデル)
-MODEL_NAME = "gemini-2.5-flash"
+MODEL_NAME = "3.1-flash-lite"
 
 def generate_room_post_content(product_data: Dict) -> str:
     """
@@ -52,14 +52,73 @@ def generate_room_post_content(product_data: Dict) -> str:
     print(f"[AI Generator] 商品『{title[:15]}...』の紹介文をGeminiで生成中...")
     
     try:
-        model = genai.GenerativeModel(MODEL_NAME)
-        response = model.generate_content(prompt)
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
         content = response.text.strip()
         print("[AI Generator] 生成完了。")
         return content
     except Exception as e:
         print(f"[AI Generator] AI生成エラーが発生しました: {e}")
         return f"おすすめの商品です！ #おすすめ #楽天ROOM\n\n{title}"
+
+def generate_sns_content(product_data: Dict, platform: str) -> str:
+    """
+    SNS（XまたはInstagram）向けの投稿文を生成します。
+    """
+    if not GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEYが.envに設定されていません。")
+
+    title = product_data.get("title", "")
+    price = product_data.get("price", 0)
+    description = product_data.get("description", "")
+    
+    if platform.lower() == "x":
+        prompt = f"""
+あなたは楽天アフィリエイトで月100万稼ぐ凄腕のX（Twitter）インフルエンサーです。
+以下の商品を紹介する、拡散されやすくクリック率の高いポストを作成してください。
+
+【商品情報】
+商品名: {title}
+価格: {price}円
+商品説明: {description[:300]}...
+
+【作成ルール】
+- 140文字以内（必須）
+- 冒頭でベネフィットを強調して惹きつける
+- 絵文字を1〜2個使い、視認性を高める
+- 最後に、トレンドに合わせたハッシュタグを2個つける
+- URLを入れる場所を [URL] と記載してください
+"""
+    elif platform.lower() == "instagram":
+        prompt = f"""
+あなたはInstagramで大人気のライフスタイル系インスタグラマーです。
+以下の商品を紹介する、おしゃれで親しみやすいキャプションを作成してください。
+
+【商品情報】
+商品名: {title}
+価格: {price}円
+商品説明: {description[:300]}...
+
+【作成ルール】
+- ユーザーに語りかけるような丁寧な言葉遣い
+- 商品の「使い心地」や「生活がどう変わるか」を想像させる内容
+- 適度に改行を入れ、読みやすくする
+- 最後に、関連性の高いハッシュタグを10個程度つける
+"""
+    else:
+        return generate_room_post_content(product_data)
+
+    print(f"[AI Generator] {platform}向けコンテンツを生成中...")
+    
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
+        content = response.text.strip()
+        print(f"[AI Generator] {platform}向け生成完了。")
+        return content
+    except Exception as e:
+        print(f"[AI Generator] AI生成エラーが発生しました: {e}")
+        return f"おすすめの商品です！\n{title}"
 
 if __name__ == "__main__":
     # テスト実行用
@@ -68,7 +127,12 @@ if __name__ == "__main__":
         "price": 5500,
         "description": "特Aランクのお米。甘みと旨みが特徴のつや姫。無洗米なので洗う手間が省けます。"
     }
-    result = generate_room_post_content(dummy_data)
-    print("--- 生成結果 ---")
-    print(result)
-    print("----------------")
+    
+    print("--- 楽天ROOM ---")
+    print(generate_room_post_content(dummy_data))
+    
+    print("\n--- X (Twitter) ---")
+    print(generate_sns_content(dummy_data, "x"))
+    
+    print("\n--- Instagram ---")
+    print(generate_sns_content(dummy_data, "instagram"))
