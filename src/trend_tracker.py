@@ -92,7 +92,7 @@ def discover_trends_with_ai(category: str) -> list:
     print(f"[Trend Tracker] AIが '{category}' のトレンドを独自解析中...")
     try:
         response = client.models.generate_content(
-            model='3.1-flash-lite',
+            model='gemini-3.1-flash-lite',
             contents=prompt,
             config=types.GenerateContentConfig(
                 tools=[{"google_search": {}}] # Google検索を有効化（Search Grounding）
@@ -131,7 +131,7 @@ def analyze_trend_with_ai(product_name: str, price: int, review_count: int, revi
 """
     try:
         response = client.models.generate_content(
-            model='3.1-flash-lite',
+            model='gemini-3.1-flash-lite',
             contents=prompt,
         )
         return response.text.strip()
