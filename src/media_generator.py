@@ -3,7 +3,8 @@ import requests
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
 from typing import Dict, Tuple
 from io import BytesIO
-from moviepy import ImageClip
+from moviepy import ImageClip, VideoClip
+import moviepy.video.fx as vfx
 
 def download_image(url: str) -> Image.Image:
     """URLから画像をダウンロードしてPIL Imageオブジェクトを返す"""
@@ -128,17 +129,50 @@ def create_short_video(image_path: str, output_path: str = None) -> str:
     if not image_path or not os.path.exists(image_path): return ""
     if not output_path: output_path = image_path.replace(".png", ".mp4")
     
-    print(f"[Media Generator] 高品質動画を生成中: {output_path}")
+    print(f"[Media Generator] 動画生成プロセス開始: {output_path}")
     try:
-        # ケンバーンズ効果（ゆっくりズーム）を適用
+        # 1. 静止画を読み込み
         clip = ImageClip(image_path, duration=5)
-        clip = clip.resize(lambda t: 1 + 0.05 * t) # 5秒間で5%ズーム
-        clip = clip.set_position(('center', 'center'))
         
-        clip.write_videofile(output_path, fps=30, codec="libx264", audio=False, logger=None)
+        # 2. ズームアニメーション（ケンバーンズ効果）の適用
+        # MoviePy 2.x 以降の正しい書き方
+        try:
+            # 時間(t)に応じて解像度を1.0倍から1.1倍に拡大する関数
+            def zoom_effect(get_frame, t):
+                frame = get_frame(t)
+                zoom_factor = 1 + (0.1 * (t / 5)) # 5秒間で1.1倍
+                
+                # PILを使ってフレームをリサイズ
+                img = Image.fromarray(frame)
+                w, h = img.size
+                new_w, new_h = int(w * zoom_factor), int(h * zoom_factor)
+                
+                # 拡大して中央を切り抜く
+                img_zoomed = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                left = (new_w - w) // 2
+                top = (new_h - h) // 2
+                img_final = img_zoomed.crop((left, top, left + w, top + h))
+                
+                return np.array(img_final)
+
+            import numpy as np
+            clip = clip.transform(zoom_effect)
+        except Exception as ze:
+            print(f"[Media Generator] ズーム効果の適用に失敗しました: {ze}")
+            # エフェクトなしで続行
+
+        # 3. ファイル書き出し
+        clip.write_videofile(
+            output_path, 
+            fps=24, 
+            codec="libx264", 
+            audio=False, 
+            logger=None,
+            preset="medium"
+        )
         return output_path
     except Exception as e:
-        print(f"[Media Generator] 動画生成エラー: {e}")
+        print(f"[Media Generator] 動画生成中に致命的なエラーが発生しました: {e}")
         return ""
 
 if __name__ == "__main__":
